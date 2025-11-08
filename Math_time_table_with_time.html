@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Times Table Trainer v3 – Kru Pai Classroom</title>
+<style>
+  :root{
+    --bg1:#fff7fb; --bg2:#f0f7ff;
+    --card:#ffffff; --ink:#111827; --muted:#6b7280;
+    --brand:#ff4b91; --brand2:#ff7bbf; --ok:#22c55e; --warn:#ef4444;
+    --ring:#ff4b91;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; font-family:'Noto Sans Thai',system-ui,sans-serif; background:linear-gradient(180deg,var(--bg1),var(--bg2)); color:var(--ink); display:flex; align-items:center; justify-content:center; padding:16px}
+  .app{width:min(980px,100%)}
+  .card{background:var(--card); border-radius:24px; box-shadow:0 12px 30px rgba(0,0,0,.08); overflow:hidden}
+  header{padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; color:#fff; background:linear-gradient(90deg,var(--brand),var(--brand2))}
+  .brand{display:flex; align-items:center; gap:12px}
+  .logo{width:44px; height:44px; border-radius:12px; background:#fff; display:grid; place-items:center; color:var(--brand); font-weight:900}
+  h1{margin:0; font-size:clamp(18px,2.8vw,26px); font-weight:900}
+  .pill{display:inline-flex; align-items:center; gap:8px; background:#ffffff; color:var(--ink); border:1px dashed #e5e7eb; padding:6px 10px; border-radius:999px}
+  .sub{font-size:12px; opacity:.85}
+  .screen{padding:24px}
+  .hidden{display:none}
+
+  /* GRID หน้าเลือกแม่ */
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(116px,1fr)); gap:14px}
+  .tblBtn{type:button; background:#f6f8ff; border:2px solid #e6eaff; border-radius:18px; padding:18px 14px; font-size:22px; font-weight:900; cursor:pointer; transition:.2s transform, .2s box-shadow}
+  .tblBtn:hover{transform:translateY(-2px); box-shadow:0 10px 18px rgba(108,140,255,.25)}
+  .tblBtn .small{display:block; font-size:12px; font-weight:600; opacity:.75}
+  .tblBtn.passed{background:#ecfdf5; border-color:#bbf7d0; color:#065f46}
+  .badge{display:inline-flex; align-items:center; gap:6px; background:var(--ok); color:#fff; border-radius:999px; padding:3px 8px; font-size:12px; font-weight:800}
+
+  /* TEST */
+  .row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .equation{position:relative; background:#f8fafc; border:2px solid #e5e7eb; border-radius:22px; padding:26px 20px 40px}
+  .eqWrap{display:inline-flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .numBubble{display:inline-flex; align-items:center; justify-content:center; width:clamp(64px,14vw,100px); height:clamp(64px,14vw,100px); border-radius:50%; background:#fff; border:6px solid var(--ring); box-shadow:0 6px 12px rgba(255,75,145,.25); font-size:clamp(36px,8vw,52px); font-weight:1000; color:var(--ring); animation:bob 2.1s ease-in-out infinite alternate}
+  .op{font-size:clamp(26px,6vw,38px); color:#374151}
+  @keyframes bob{0%{transform:translateY(0)}100%{transform:translateY(-6px)}}
+  .inputWrap{margin-top:18px; display:flex; align-items:center; gap:8px; justify-content:center}
+  .inputAns{width:min(200px,55vw); font-size:clamp(26px,6vw,38px); text-align:center; font-weight:900; padding:10px 12px; border-radius:14px; border:3px solid #ff9ec5; outline:none; box-shadow:0 6px 10px rgba(0,0,0,.05)}
+  .inputAns:focus{border-color:var(--ring)}
+  .tick{position:absolute; right:16px; top:12px; font-size:40px; color:var(--ok); opacity:0; transform:scale(.6) translateY(8px)}
+  .tick.show{animation:tickPop .6s ease forwards}
+  @keyframes tickPop{0%{opacity:0; transform:scale(.6) translateY(8px)}40%{opacity:1; transform:scale(1.1) translateY(-4px)}100%{opacity:1; transform:scale(1) translateY(0)}}
+
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap}
+  .btn{border:none; cursor:pointer; padding:12px 16px; border-radius:14px; font-weight:800; background:#eef2ff; color:#3730a3; border:2px solid #c7d2fe; transition:.2s transform}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--brand); border-color:#ff8fc0; color:#fff}
+  .btn.warn{background:#fee2e2; border-color:#fecaca; color:#991b1b}
+  .btn.neutral{background:#f3f4f6; border-color:#e5e7eb; color:#374151}
+
+  .flash-correct{animation:flashOK .45s ease}
+  .flash-wrong{animation:flashBAD .45s ease}
+  @keyframes flashOK{0%{background:#ecfdf5}100%{background:transparent}}
+  @keyframes flashBAD{0%{background:#fef2f2}100%{background:transparent}}
+
+  .confetti{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+  .confetti i{position:absolute; width:10px; height:16px; opacity:.9; border-radius:3px; will-change:transform}
+
+  @media (prefers-reduced-motion: reduce){ .numBubble{animation:none} }
+</style>
+</head>
+<body>
+<div class="app card" id="app">
+  <header>
+    <div class="brand">
+      <div class="logo">×</div>
+      <div>
+        <h1>เกมท่องแม่สูตรคูณ 2–12 • v3</h1>
+        <div class="sub">Kru Pai Classroom – น่ารัก ชัดเจน เล่นง่าย ✨</div>
+      </div>
+    </div>
+    <div class="pill"><strong>ผู้เล่น:</strong> <span id="playerNameDisp">ยังไม่ตั้งชื่อ</span></div>
+  </header>
+
+  <!-- Start: ใส่ชื่อ -->
+  <section class="screen" id="startScreen">
+    <div style="display:grid; gap:16px; justify-items:center; text-align:center">
+      <div style="font-weight:900; font-size:28px; color:var(--brand)">ยินดีต้อนรับสู่ Kru Pai Classroom</div>
+      <div>พิมพ์ <strong>ชื่อผู้ทดสอบ</strong> แล้วกดเริ่มเล่น</div>
+      <div class="row" style="justify-content:center">
+        <input id="nameInput" class="inputAns" type="text" maxlength="20" placeholder="เช่น: น้องพีช" style="width:min(260px,80vw)" />
+        <button id="btnStart" class="btn primary" type="button">เริ่มเล่น</button>
+      </div>
+      <div class="sub">ระบบจะจำชื่อไว้ในเครื่องของหนูนะ</div>
+    </div>
+  </section>
+
+  <!-- Welcome-back Screen -->
+  <section class="screen hidden" id="welcomeBackScreen">
+    <div style="text-align:center; display:grid; gap:12px; justify-items:center">
+      <div style="font-size:26px; font-weight:900; color:var(--brand)">ยินดีต้อนรับ <span id="welcomeName">น้อง</span> สู่โลกแห่งสูตรคูณอีกครั้ง 🌟</div>
+      <div class="sub">ถ้าพร้อมแล้ว กดปุ่มด้านล่างเพื่อไปต่อกันเลย!</div>
+      <div class="row" style="justify-content:center; gap:10px">
+        <button id="btnGoHome" class="btn primary" type="button">ไปต่อกันเลย</button>
+        <button id="btnChangeName" class="btn" type="button">เปลี่ยนชื่อ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Home: เลือกแม่สูตรคูณ -->
+  <section class="screen hidden" id="homeScreen">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div class="pill">โหมด: <strong id="modeText">ปกติ</strong></div>
+      <div class="row" style="gap:8px">
+        <button id="btnToggleMode" class="btn" type="button">สลับเป็นจับเวลา</button>
+        <button id="btnReset" class="btn warn" type="button">ล้างสถานะที่ผ่าน</button>
+      </div>
+    </div>
+    <p style="margin-top:0">เลือก <strong>แม่สูตรคูณ</strong> ที่ต้องการทดสอบ (2–12). ที่ผ่านแล้วจะมีป้าย <span class="badge">✔ ผ่านแล้ว</span></p>
+    <div class="grid" id="tableGrid"></div>
+    <div class="sub" style="margin-top:12px">กติกา: ตอบให้ครบ 12 ข้อเรียง 1–12 ถ้าผิดจะเริ่มที่ ×1 ของแม่เดิม</div>
+  </section>
+
+  <!-- Test: ทำข้อ -->
+  <section class="screen hidden" id="testScreen">
+    <div class="row" style="justify-content:space-between; margin-bottom:12px">
+      <div class="pill">กำลังทดสอบ: <strong>แม่ <span id="tblNow"></span></strong></div>
+      <div class="row" style="gap:8px; align-items:center">
+        <div class="pill">ข้อ: <strong><span id="stepNow">1</span>/12</strong></div>
+        <div class="pill hidden" id="timerPill">⏱️ เหลือเวลา: <strong><span id="timeLeft">60</span>s</strong></div>
+      </div>
+    </div>
+    <div class="equation center" id="eqBox">
+      <div id="eqText" style="font-weight:900"><span class="eqWrap"><span class="numBubble">2</span> <span class="op">×</span> <span class="numBubble">1</span> <span class="op">=</span></span></div>
+      <div class="tick" id="tick">✔</div>
+      <form id="answerForm" class="center inputWrap" autocomplete="off">
+        <input id="answer" class="inputAns" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="พิมพ์ผลคูณ" required />
+        <button id="submitBtn" class="btn primary" type="submit">ตรวจคำตอบ</button>
+      </form>
+    </div>
+    <div class="row" style="justify-content:space-between; margin-top:14px">
+      <div class="toolbar">
+        <button class="btn neutral" id="btnHome" type="button">กลับหน้าหลัก</button>
+        <button class="btn warn" id="btnStop" type="button">Stop</button>
+        <button class="btn" id="btnRestart" type="button">เริ่มใหม่</button>
+      </div>
+      <div class="sub">ตอบผิด → เริ่มที่ <strong>×1</strong> ของแม่นี้ใหม่</div>
+    </div>
+  </section>
+
+  <!-- Celebrate -->
+  <section class="screen hidden center" id="celebrateScreen">
+    <div style="text-align:center">
+      <div style="font-size:36px; color:var(--ok); font-weight:900">สุดยอด! ผ่านแล้ว 🎉</div>
+      <div>แม่ <strong id="tblPassed"></strong> สำเร็จ ครบ 12 ข้อ</div>
+      <div class="sub" style="margin-top:8px">จะกลับสู่หน้าเลือกแม่อัตโนมัติใน 2 วินาที…</div>
+      <div style="margin-top:12px"><button class="btn primary" id="btnBackNow" type="button">กลับเลย</button></div>
+    </div>
+  </section>
+
+  <!-- Time up -->
+  <section class="screen hidden center" id="timeupScreen">
+    <div style="text-align:center">
+      <div style="font-size:30px; color:var(--warn); font-weight:900">หมดเวลา ⏱️</div>
+      <div style="margin-top:6px">มาลองใหม่อีกครั้งนะ</div>
+      <div style="margin-top:12px"><button class="btn primary" id="btnRetry" type="button">เริ่มใหม่ของแม่นี้</button></div>
+    </div>
+  </section>
+
+  <div class="confetti" id="confetti"></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  // Elements
+  const start = document.getElementById('startScreen');
+  const welcomeBack = document.getElementById('welcomeBackScreen');
+  const home = document.getElementById('homeScreen');
+  const test = document.getElementById('testScreen');
+  const cele = document.getElementById('celebrateScreen');
+  const timeup = document.getElementById('timeupScreen');
+  const grid = document.getElementById('tableGrid');
+  const nameInput = document.getElementById('nameInput');
+  const btnStart = document.getElementById('btnStart');
+  const btnGoHome = document.getElementById('btnGoHome');
+  const btnChangeName = document.getElementById('btnChangeName');
+  const playerNameDisp = document.getElementById('playerNameDisp');
+  const welcomeName = document.getElementById('welcomeName');
+  const eqText = document.getElementById('eqText');
+  const eqBox = document.getElementById('eqBox');
+  const tick = document.getElementById('tick');
+  const answerForm = document.getElementById('answerForm');
+  const answer = document.getElementById('answer');
+  const submitBtn = document.getElementById('submitBtn');
+  const stepNow = document.getElementById('stepNow');
+  const tblNow = document.getElementById('tblNow');
+  const tblPassed = document.getElementById('tblPassed');
+  const btnHome = document.getElementById('btnHome');
+  const btnStop = document.getElementById('btnStop');
+  const btnRestart = document.getElementById('btnRestart');
+  const btnBackNow = document.getElementById('btnBackNow');
+  const btnRetry = document.getElementById('btnRetry');
+  const confetti = document.getElementById('confetti');
+  const timerPill = document.getElementById('timerPill');
+  const timeLeftEl = document.getElementById('timeLeft');
+  const btnToggleMode = document.getElementById('btnToggleMode');
+  const btnReset = document.getElementById('btnReset');
+  const modeText = document.getElementById('modeText');
+
+  // State
+  const LS_PASS = 'kru_pai_times_table_passed_v4';
+  const LS_NAME = 'kru_pai_player_name_v4';
+  const LS_MODE = 'kru_pai_mode_v1'; // normal | timed
+  let passed = loadPassed();
+  let mode = localStorage.getItem(LS_MODE) || 'normal';
+  let currentTable = null; // number 2..12
+  let step = 1;            // 1..12
+  let timer = null;        // interval id
+  let timeLeft = 60;       // seconds
+
+  init();
+
+  function init(){
+    const savedName = (localStorage.getItem(LS_NAME) || '').trim();
+    if(savedName){
+      playerNameDisp.textContent = savedName;
+      welcomeName.textContent = savedName.startsWith('น้อง') ? savedName : ('น้อง '+savedName);
+      switchScreen('welcome');
+    }else{
+      switchScreen('start');
+    }
+    setMode(mode);
+  }
+
+  function switchScreen(name){
+    [start,welcomeBack,home,test,cele,timeup].forEach(s=>s.classList.add('hidden'));
+    if(name==='start') start.classList.remove('hidden');
+    if(name==='welcome') welcomeBack.classList.remove('hidden');
+    if(name==='home') home.classList.remove('hidden');
+    if(name==='test') test.classList.remove('hidden');
+    if(name==='cele') cele.classList.remove('hidden');
+    if(name==='timeup') timeup.classList.remove('hidden');
+    stopTimer();
+  }
+
+  // Start & Welcome actions
+  btnStart.addEventListener('click', saveNameAndGo);
+  nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') saveNameAndGo(); });
+  btnGoHome.addEventListener('click', ()=>{ switchScreen('home'); renderGrid(); });
+  btnChangeName.addEventListener('click', ()=>{ localStorage.removeItem(LS_NAME); playerNameDisp.textContent='ยังไม่ตั้งชื่อ'; switchScreen('start'); });
+  function saveNameAndGo(){
+    let nm = (nameInput.value||'').trim(); if(!nm) nm = 'นักเรียน';
+    localStorage.setItem(LS_NAME, nm);
+    playerNameDisp.textContent = nm; welcomeName.textContent = nm.startsWith('น้อง') ? nm : ('น้อง '+nm);
+    switchScreen('welcome');
+  }
+
+  // Mode toggle & reset
+  btnToggleMode.addEventListener('click', ()=>{ setMode(mode==='normal'?'timed':'normal'); });
+  btnReset.addEventListener('click', ()=>{ if(confirm('ล้างสถานะแม่ที่ผ่านทั้งหมด?')){ passed={}; savePassed(); renderGrid(); } });
+  function setMode(m){ mode=m; localStorage.setItem(LS_MODE, mode); modeText.textContent = (mode==='normal'?'ปกติ':'จับเวลา 60s'); btnToggleMode.textContent = (mode==='normal'?'สลับเป็นจับเวลา':'สลับเป็นโหมดปกติ'); }
+
+  // Home grid
+  function renderGrid(){
+    grid.innerHTML = '';
+    for(let n=2; n<=12; n++){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tblBtn' + (passed[n] ? ' passed' : '');
+      btn.innerHTML = `
+        <span style="font-size:28px; font-weight:900">แม่ ${n}</span>
+        <span class="small">ทดสอบ 1–12</span>
+        ${passed[n] ? `<div style=\"margin-top:8px\"><span class=\"badge\">✔ ผ่านแล้ว</span></div>` : ''}
+      `;
+      btn.addEventListener('click', ()=>startTest(n));
+      grid.appendChild(btn);
+    }
+  }
+
+  function startTest(n){
+    currentTable = n; step = 1; tick.classList.remove('show');
+    tblNow.textContent = n;
+    updateEquation();
+    switchScreen('test');
+    setTimeout(()=>answer.focus(), 80);
+    if(mode==='timed'){ timeLeft=60; timeLeftEl.textContent=timeLeft; timerPill.classList.remove('hidden'); startTimer(); } else { timerPill.classList.add('hidden'); }
+  }
+
+  function updateEquation(){
+    eqText.innerHTML = `<span class=\"eqWrap\">
+      <span class=\"numBubble\">${currentTable}</span>
+      <span class=\"op\">×</span>
+      <span class=\"numBubble\">${step}</span>
+      <span class=\"op\">=</span>
+    </span>`;
+    stepNow.textContent = step;
+    answer.value = '';
+  }
+
+  // Timer
+  function startTimer(){ stopTimer(); timer=setInterval(()=>{ timeLeft--; timeLeftEl.textContent=timeLeft; if(timeLeft<=0){ stopTimer(); switchScreen('timeup'); btnRetry.onclick=()=>{ startTest(currentTable); }; } },1000); }
+  function stopTimer(){ if(timer){ clearInterval(timer); timer=null; } }
+
+  // Answers
+  answerForm.addEventListener('submit', onSubmit);
+  submitBtn.addEventListener('click', ()=>{});
+  function onSubmit(e){
+    e.preventDefault();
+    const val = Number((answer.value||'').trim());
+    const correct = currentTable * step;
+    if(val === correct){
+      flash(true);
+      tick.classList.remove('show'); void tick.offsetWidth; tick.classList.add('show');
+      step++;
+      if(step>12){ onSuccess(); }
+      else { setTimeout(updateEquation, 220); }
+    }else{
+      flash(false); tick.classList.remove('show'); step = 1; updateEquation();
+    }
+  }
+
+  function flash(ok){
+    eqBox.classList.remove('flash-correct','flash-wrong');
+    void eqBox.offsetWidth; // reflow
+    eqBox.classList.add(ok? 'flash-correct':'flash-wrong');
+  }
+
+  // Buttons
+  btnHome.addEventListener('click', returnHome);
+  btnStop.addEventListener('click', returnHome);
+  btnRestart.addEventListener('click', ()=>{ tick.classList.remove('show'); step=1; updateEquation(); answer.focus(); if(mode==='timed'){ timeLeft=60; timeLeftEl.textContent=timeLeft; } });
+  function returnHome(){ switchScreen('home'); renderGrid(); }
+
+  // Success
+  function onSuccess(){
+    passed[currentTable] = true; savePassed();
+    tblPassed.textContent = currentTable;
+    fireConfetti();
+    switchScreen('cele');
+    const t = setTimeout(returnHome, 2000);
+    btnBackNow.onclick = ()=>{ clearTimeout(t); returnHome(); };
+  }
+
+  function loadPassed(){ try{ return JSON.parse(localStorage.getItem(LS_PASS)||'{}'); }catch(e){ return {}; } }
+  function savePassed(){ localStorage.setItem(LS_PASS, JSON.stringify(passed)); }
+
+  // Confetti
+  function fireConfetti(){
+    confetti.innerHTML = '';
+    const colors = ['#ffd166','#06d6a0','#118ab2','#ef476f','#8338ec','#ff5fa2'];
+    const count = 120, W = innerWidth, H = innerHeight;
+    for(let i=0;i<count;i++){
+      const el=document.createElement('i');
+      el.style.left = Math.random()*W + 'px';
+      el.style.top = '-20px';
+      el.style.background = colors[(Math.random()*colors.length)|0];
+      const rot = Math.random()*360, size = 6+Math.random()*10; el.style.width=size+'px'; el.style.height=(size*1.4)+'px';
+      const fall = H + Math.random()*H*.4, drift = (Math.random()*200-100), dur=1800+Math.random()*1200;
+      el.animate([
+        { transform:`translate(0,0) rotate(${rot}deg)`, opacity:1 },
+        { transform:`translate(${drift}px, ${fall}px) rotate(${rot+360}deg)`, opacity:.95 }
+      ],{ duration:dur, easing:'cubic-bezier(.2,.7,.2,1)', fill:'forwards' });
+      confetti.appendChild(el);
+    }
+    setTimeout(()=>confetti.innerHTML='', 2600);
+  }
+})();
+</script>
+</body>
+</html>
